@@ -16,3 +16,6 @@ avoided: prefer moving that logic to consumers, and relying on
  [contract testing](https://docs.pact.io/best_practices/contract_tests_not_functional_tests.html)
 to detect incompatibilities.
 #addsvc-mini
+
+Simplified example
+
