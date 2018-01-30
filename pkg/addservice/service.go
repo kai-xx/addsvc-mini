@@ -12,6 +12,7 @@ import (
 type Service interface {
 	Sum(ctx context.Context, a, b int) (int, error)
 	Concat(ctx context.Context, a, b string) (string, error)
+	Test(ctx context.Context, a, b string) (string, error)
 }
 
 // New returns a basic Service with all of the expected middlewares wired in.
@@ -64,6 +65,14 @@ func (s basicService) Sum(_ context.Context, a, b int) (int, error) {
 
 // Concat implements Service.
 func (s basicService) Concat(_ context.Context, a, b string) (string, error) {
+	if len(a)+len(b) > maxLen {
+		return "", ErrMaxSizeExceeded
+	}
+	return a + b, nil
+}
+
+// Test implements Service.
+func (s basicService) Test(_ context.Context, a, b string) (string, error) {
 	if len(a)+len(b) > maxLen {
 		return "", ErrMaxSizeExceeded
 	}

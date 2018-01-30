@@ -16,7 +16,7 @@ import (
 	"github.com/go-kit/kit/ratelimit"
 	"github.com/go-kit/kit/tracing/opentracing"
 
-	"github.com/go-kit/kit/examples/addsvc/pkg/addservice"
+	"addsvc-mini/pkg/addservice"
 )
 
 // Set collects all of the endpoints that compose an add service. It's meant to
@@ -25,6 +25,7 @@ import (
 type Set struct {
 	SumEndpoint    endpoint.Endpoint
 	ConcatEndpoint endpoint.Endpoint
+	TestEndpoint endpoint.Endpoint
 }
 
 // New returns a Set that wraps the provided server, and wires in all of the
@@ -48,9 +49,20 @@ func New(svc addservice.Service, logger log.Logger, duration metrics.Histogram, 
 		concatEndpoint = LoggingMiddleware(log.With(logger, "method", "Concat"))(concatEndpoint)
 		concatEndpoint = InstrumentingMiddleware(duration.With("method", "Concat"))(concatEndpoint)
 	}
+
+	var TestEndpoint endpoint.Endpoint
+	{
+		TestEndpoint = MakeTestEndpoint(svc)
+		TestEndpoint = ratelimit.NewErroringLimiter(rate.NewLimiter(rate.Every(time.Second), 100))(TestEndpoint)
+		TestEndpoint = circuitbreaker.Gobreaker(gobreaker.NewCircuitBreaker(gobreaker.Settings{}))(TestEndpoint)
+		TestEndpoint = opentracing.TraceServer(trace, "Test")(TestEndpoint)
+		TestEndpoint = LoggingMiddleware(log.With(logger, "method", "Test"))(TestEndpoint)
+		TestEndpoint = InstrumentingMiddleware(duration.With("method", "Test"))(TestEndpoint)
+	}
 	return Set{
 		SumEndpoint:    sumEndpoint,
 		ConcatEndpoint: concatEndpoint,
+		TestEndpoint: TestEndpoint,
 	}
 }
 
@@ -94,6 +106,15 @@ func MakeConcatEndpoint(s addservice.Service) endpoint.Endpoint {
 	}
 }
 
+
+// MakeTestEndpoint constructs a Test endpoint wrapping the service.
+func MakeTestEndpoint(s addservice.Service) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (response interface{}, err error) {
+		req := request.(TestRequest)
+		v, err := s.Test(ctx, req.A, req.B)
+		return TestResponse{V: v, Err: err}, nil
+	}
+}
 // Failer is an interface that should be implemented by response types.
 // Response encoders can check if responses are Failer, and if so if they've
 // failed, and if so encode them using a separate write path based on the error.
@@ -128,3 +149,18 @@ type ConcatResponse struct {
 
 // Failed implements Failer.
 func (r ConcatResponse) Failed() error { return r.Err }
+
+
+// TestRequest collects the request parameters for the Test method.
+type TestRequest struct {
+	A, B string
+}
+
+// TestResponse collects the response values for the Test method.
+type TestResponse struct {
+	V   string `json:"v"`
+	Err error  `json:"-"`
+}
+
+// Failed implements Failer.
+func (r TestResponse) Failed() error { return r.Err }

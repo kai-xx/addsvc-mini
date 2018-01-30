@@ -23,9 +23,9 @@ import (
 	"github.com/go-kit/kit/metrics"
 	"github.com/go-kit/kit/metrics/prometheus"
 
-	"github.com/go-kit/kit/examples/addsvc/pkg/addendpoint"
-	"github.com/go-kit/kit/examples/addsvc/pkg/addservice"
-	"github.com/go-kit/kit/examples/addsvc/pkg/addtransport"
+	"addsvc-mini/pkg/addendpoint"
+	"addsvc-mini/pkg/addservice"
+	"addsvc-mini/pkg/addtransport"
 )
 
 func main() {
